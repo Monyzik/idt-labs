@@ -46,8 +46,6 @@ build:
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
-  dependencies:
-    - test
   script:
     - |
     - echo "Сборка Docker образа..."
