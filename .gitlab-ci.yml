@@ -1,19 +1,37 @@
 stages:
   - test
   - build
+  - verify
   - deploy
 
 variables:
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - .cache/pip
+    - venv/
+
+
+before_script:
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
+
 
 test:
   stage: test
-  image: python:3.12
+  image: python:3.12-slim
   before_script:
+    - pip install --upgrade pip
     - pip install -r requirements.txt
     - pip install pytest pytest-cov
   script:
-    - pytest --junitxml=report.xml --cov=. --cov-report=xml
+    - pytest --junitxml=report.xml --cov=. --cov-report=xml --cov-fail-under=70
   coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
   artifacts:
     reports:
@@ -27,13 +45,63 @@ build:
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
+  dependencies:
+    - test
   script:
     - docker build -t $IMAGE_TAG .
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker push $IMAGE_TAG
-  only:
-    - main
-    - develop
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      when: on_success
+
+verify:
+  stage: verify
+  image: docker:${DOCKER_VERSION}
+  services:
+    - docker:${DOCKER_VERSION}-dind
+  needs:
+    - build
+  script:
+    - |
+      echo "Проверка работоспособности образа..."
+      
+      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      docker pull $IMAGE_TAG
+      
+      echo "Запуск контейнера..."
+      CONTAINER_ID=$(docker run -d \
+        --rm \
+        -p 8000:8000 \
+        -e DATABASE_URL=sqlite:///:memory: \
+        $IMAGE_TAG)
+      
+      echo "Ожидание запуска приложения..."
+      sleep 15
+
+      echo "Проверка health check..."
+      if curl -f http://localhost:8000/api/health/ > /dev/null 2>&1; then
+        echo "Health check пройден"
+      else
+        echo "Health check не пройден"
+        docker logs $CONTAINER_ID
+        exit 1
+      fi
+      
+      echo "Проверка API..."
+      if curl -f http://localhost:8000/api/todos/ > /dev/null 2>&1; then
+        echo "PI работает"
+      else
+        echo "API недоступен"
+        docker logs $CONTAINER_ID
+        exit 1
+      fi
+      echo "Остановка контейнера..."
+      docker stop $CONTAINER_ID
+      echo "Образ прошел все проверки"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      when: on_success
 
 deploy:
   stage: deploy
