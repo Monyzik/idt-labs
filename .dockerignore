@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Тесты и документация
+tests/
+docs/
+*.md
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+# OS
+.DS_Store
+Thumbs.db
+
+# Временные файлы
+*.tmp
+temp/
+.gitlab-ci.yml
+
+# Docker
+Dockerfile.dev
+Dockerfile
+docker-compose.override.yml
+.dockerignore
+
+# Временные файлы контейнеров
+.docker/

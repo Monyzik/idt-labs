@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List FastAPI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>To-Do List</h1>
+            <p>Простой менеджер задач с бэкендом на Python</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="taskInput" placeholder="Введите новую задачу..." maxlength="100">
+                <button id="addButton">Добавить</button>
+            </div>
+        </div>
+
+        <div class="tasks-section" id="tasksContainer">
+            <div class="empty-state" id="emptyState">
+                <h3>Пока нет задач</h3>
+                <p>Добавьте свою первую задачу выше</p>
+            </div>
+        </div>
+
+        <div class="stats">
+            <span>Всего задач: <span id="totalTasks">0</span></span>
+            <span>Выполнено: <span id="completedTasks">0</span></span>
+        </div>
+
+        <div class="api-info">
+            <p>Работает на FastAPI | <a href="/docs" target="_blank">API Documentation</a></p>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
