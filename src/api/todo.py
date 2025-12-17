@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from src.database.database_manager import get_db_session
+from src.database.database_manager import get_db
 from src.todo import TodoCRUD
 from src.todo import (
     TodoCreate,
@@ -17,7 +17,7 @@ router = APIRouter(tags=["todos"])
 async def get_todos(
         skip: int = 0,
         limit: int = 100,
-        db: Session = Depends(get_db_session)
+        db: Session = Depends(get_db)
 ):
     """Получить все задачи"""
     crud = TodoCRUD(db)
@@ -28,7 +28,7 @@ async def get_todos(
 @router.post("/", response_model=TodoResponse, status_code=status.HTTP_201_CREATED)
 async def create_todo(
         todo: TodoCreate,
-        db: Session = Depends(get_db_session)
+        db: Session = Depends(get_db)
 ):
     """Создать новую задачу"""
     crud = TodoCRUD(db)
@@ -39,7 +39,7 @@ async def create_todo(
 async def update_todo(
         todo_id: int,
         todo_update: TodoUpdate,
-        db: Session = Depends(get_db_session)
+        db: Session = Depends(get_db)
 ):
     crud = TodoCRUD(db)
     updated_todo = crud.update(todo_id, todo_update)
@@ -56,7 +56,7 @@ async def update_todo(
 @router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_todo(
         todo_id: int,
-        db: Session = Depends(get_db_session)
+        db: Session = Depends(get_db)
 ):
     crud = TodoCRUD(db)
     success = crud.delete(todo_id)
@@ -69,6 +69,6 @@ async def delete_todo(
 
 
 @router.get("/stats", response_model=TodoStats)
-async def get_todos_stats(db: Session = Depends(get_db_session)):
+async def get_todos_stats(db: Session = Depends(get_db)):
     crud = TodoCRUD(db)
     return crud.get_stats()

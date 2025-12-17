@@ -17,9 +17,21 @@ api_router = APIRouter()
 api_router.include_router(todo.router, prefix="/todos", tags=["todos"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 
-app = FastAPI()
-Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 Запуск приложения...")
+    try:
+        # Создаем таблицы при запуске приложения
+        Base.metadata.create_all(bind=engine)
+        print("Таблицы базы данных созданы/проверены")
+    except Exception as e:
+        print(f"Ошибка при создании таблиц: {e}")
+    yield
+    print("Остановка приложения...")
+
+
+app = FastAPI(lifespan=lifespan)  # Используем lifespan manager
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,19 +41,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("🚀 Запуск приложения...")
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("Таблицы базы данных созданы/проверены")
-    except Exception as e:
-        print(f"Ошибка при создании таблиц: {e}")
-    yield
-    print("Остановка приложения...")
-
-
 app.include_router(api_router, prefix="/api")
 
 if os.path.exists(STATIC_DIR):
@@ -50,7 +49,9 @@ if os.path.exists(STATIC_DIR):
 
 @app.get("/")
 async def read_index():
-    return FileResponse(f"{STATIC_DIR}/index.html")
+    if os.path.exists(STATIC_DIR):
+        return FileResponse(f"{STATIC_DIR}/index.html")
+    return {"message": "Static files not found"}
 
 
 if __name__ == "__main__":

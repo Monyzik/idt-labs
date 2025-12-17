@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from src.database.database_manager import get_db_session
+from src.database.database_manager import get_db
 from src.todo import TodoCRUD
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/")
-async def health_check(db: Session = Depends(get_db_session)):
+async def health_check(db: Session = Depends(get_db)):
     try:
         crud = TodoCRUD(db)
         stats = crud.get_stats()
