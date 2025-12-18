@@ -9,18 +9,17 @@ variables:
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
+#cache:
+#  key: $CI_COMMIT_REF_SLUG
+#  paths:
+#    - .cache/pip
+#    - venv/
 
-cache:
-  key: $CI_COMMIT_REF_SLUG
-  paths:
-    - .cache/pip
-    - venv/
 
-
-before_script:
-  - python -m venv venv
-  - source venv/bin/activate
-  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
+#before_script:
+#  - python -m venv venv
+#  - source venv/bin/activate
+#  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
 
 
 test:
@@ -108,6 +107,6 @@ deploy:
   script:
     - echo "Deploying $IMAGE_TAG"
     # Здесь ваша логика развертывания
-  only:
-    - main
-  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
