@@ -56,9 +56,9 @@ build:
 
 verify:
   stage: verify
-  image: docker:${DOCKER_VERSION}
+  image: docker:24.0.5
   services:
-    - docker:${DOCKER_VERSION}-dind
+    - docker:24.0.5-dind
   needs:
     - build
   script:
