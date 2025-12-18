@@ -100,7 +100,7 @@ verify:
         $IMAGE_TAG)
       
       PORT=$(docker port $CONTAINER_ID 8000 | cut -d: -f2)
-      echo "📡 Контейнер запущен на порту: $PORT"
+      echo "Контейнер запущен на порту: $PORT"
       
       echo "Ожидание запуска приложения..."
       sleep 30
