@@ -99,8 +99,8 @@ test-build:
       docker pull $IMAGE_TAG
       
       echo "Запуск контейнера..."
-      CONTAINER_ID=$(docker run -d -p 8000 $IMAGE_TAG)
-      PORT=$(docker port $CONTAINER_ID 8000 | cut -d: -f2)
+      CONTAINER_ID=$(docker run -d -p 1010:1010 $IMAGE_TAG)
+      PORT=1010
       echo "Контейнер ID: $CONTAINER_ID"
       echo "Контейнер доступен на порту: $PORT"
       

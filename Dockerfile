@@ -13,9 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 COPY . .
-EXPOSE 8000
-CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--reload"]
+EXPOSE 1010
+CMD ["fastapi", "run", "src/main.py", "--port", "1010", "--reload"]
 
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["curl", "-f", "0.0.0.0:8000/api/health"]
+    CMD ["curl", "-f", "0.0.0.0:1010/api/health"]
