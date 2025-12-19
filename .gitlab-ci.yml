@@ -124,9 +124,6 @@ test-build:
       echo "Ждем 30 секунд для запуска..."
       sleep 30
       
-      echo "📊 Статус сервисов:"
-      docker-compose ps
-      
       if docker ps | grep -q $CONTAINER_ID; then
         echo "Контейнер запущен"
       else
@@ -135,34 +132,20 @@ test-build:
         exit 1
       fi
       
-      echo "Проверяем доступность сервера..."
-      STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/ || echo "000")
-      
-      if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "201" ]; then
-        echo "Сервер отвечает (HTTP $STATUS_CODE)"
-        echo "Содержимое ответа:"
-        curl -s http://localhost:$PORT/ | head -c 200
-        echo ""
+      echo "Проверяем..."
+      if curl -s -f http://localhost:1010/health > /dev/null 2>&1; then
+        echo "Приложение работает!"
+        
+        echo "Логи приложения (первые 20 строк):"
+        docker logs test-app --tail 20
       else
-        echo "Сервер не отвечает (HTTP $STATUS_CODE)"
-        echo "Логи контейнера:"
-        docker logs $CONTAINER_ID
+        echo "Приложение не отвечает"
+        docker logs test-app
         exit 1
       fi
       
-      echo "Проверяем API..."
-      if curl -f -s http://localhost:$PORT/api/health > /dev/null 2>&1; then
-        echo "Health check пройден"
-      else
-        echo "Health check не найден или не отвечает"
-        echo "Логи контейнера:"
-        docker logs $CONTAINER_ID
-      fi
-      
-      echo "Останавливаем контейнер..."
-      docker stop $CONTAINER_ID
-      docker rm $CONTAINER_ID
-      
+      docker stop test-app test-db
+      docker rm test-app test-db
       echo "Тестирование завершено успешно!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
