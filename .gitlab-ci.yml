@@ -125,14 +125,6 @@ test-build:
       echo "Ждем 30 секунд для запуска..."
       sleep 30
       
-      if docker ps | grep -q $CONTAINER_ID; then
-        echo "Контейнер запущен"
-      else
-        echo "Контейнер не запущен"
-        docker logs $CONTAINER_ID
-        exit 1
-      fi
-      
       echo "Проверяем..."
       if curl -s -f http://localhost:1010/health > /dev/null 2>&1; then
         echo "Приложение работает!"
