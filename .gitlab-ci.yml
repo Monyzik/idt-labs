@@ -95,9 +95,7 @@ test-build:
   script:
     - |
       echo "Тестирование API"
-            
-      docker pull $IMAGE_TAG
-      
+                  
       export POSTGRES_DB=todo_db
       export POSTGRES_USER=user
       export POSTGRES_PASSWORD=password
