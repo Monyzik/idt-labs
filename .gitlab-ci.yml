@@ -21,12 +21,7 @@ cache:
 
 
 before_script:
-  - python -V
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
-  - pip install -r requirements.tx
-
+  - docker info
 
 
 test:
