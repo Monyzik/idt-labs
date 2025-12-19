@@ -91,9 +91,57 @@ test-build:
   needs:
     - build
   script:
-    - echo "Тестирование Docker образа..."
-    - docker run --rm $CONTAINER_IMAGE python -c "print('Image is working')"
-    - echo "Тест образа пройден"
+    - |
+      echo "Тестирование API"
+      
+      apk add --no-cache curl docker-cli
+      
+      docker pull $IMAGE_TAG
+      
+      echo "Запуск контейнера..."
+      CONTAINER_ID=$(docker run -d -p 8000:8000 $IMAGE_TAG)
+      echo "Контейнер ID: $CONTAINER_ID"
+      
+      echo "Ждем 30 секунд для запуска..."
+      sleep 30
+      
+      if docker ps | grep -q $CONTAINER_ID; then
+        echo "Контейнер запущен"
+      else
+        echo "Контейнер не запущен"
+        docker logs $CONTAINER_ID
+        exit 1
+      fi
+      
+      echo "Проверяем доступность сервера..."
+      STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || echo "000")
+      
+      if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "201" ]; then
+        echo "Сервер отвечает (HTTP $STATUS_CODE)"
+        echo "Содержимое ответа:"
+        curl -s http://localhost:8000/ | head -c 200
+        echo ""
+      else
+        echo "Сервер не отвечает (HTTP $STATUS_CODE)"
+        echo "Логи контейнера:"
+        docker logs $CONTAINER_ID
+        exit 1
+      fi
+      
+      echo "Проверяем API..."
+      if curl -f -s http://localhost:8000/api/health > /dev/null 2>&1; then
+        echo "Health check пройден"
+      else
+        echo "Health check не найден или не отвечает"
+        echo "Логи контейнера:"
+        docker logs $CONTAINER_ID
+      fi
+      
+      echo "Останавливаем контейнер..."
+      docker stop $CONTAINER_ID
+      docker rm $CONTAINER_ID
+      
+      echo "Тестирование завершено успешно!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
