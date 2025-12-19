@@ -134,6 +134,7 @@ test-build:
         docker logs test-app --tail 20
       else
         echo "Приложение не отвечает"
+        echo curl -s http://localhost:1010/api/health/
         docker logs test-app
         exit 1
       fi
