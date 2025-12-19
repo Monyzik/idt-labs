@@ -81,12 +81,6 @@ build:
 
       echo "IMAGE_TAG=$IMAGE_TAG" > build.env
 
-  artifacts:
-    reports:
-      dotenv: build.env
-    paths:
-      - Dockerfile
-      - build.env
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
@@ -97,7 +91,6 @@ deploy:
   script:
     - |
       echo "Деплой приложения"
-      echo "==================="
       echo "Образ: $IMAGE_TAG"
       echo "Ветка: $CI_COMMIT_BRANCH"
       echo "Коммит: $CI_COMMIT_SHA"
