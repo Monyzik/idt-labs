@@ -58,13 +58,6 @@ build:
       --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
       --build-arg VERSION=$CI_COMMIT_SHA \
       --build-arg COMMIT=$CI_COMMIT_SHA .
-
-      if ! docker images | grep -q "$CI_REGISTRY_IMAGE"; then
-      echo "Ошибка создания образа"
-      exit 1
-      fi
-
-      echo "Образ создан успешно"
       
       echo "Проверка созданного образа..."
       if docker image inspect $IMAGE_TAG > /dev/null 2>&1; then
