@@ -126,7 +126,7 @@ test-build:
       sleep 30
       
       echo "Проверяем..."
-      if curl -s -f http://localhost:1010/health > /dev/null 2>&1; then
+      if curl -s -f http://localhost:1010/api/health > /dev/null 2>&1; then
         echo "Приложение работает!"
         
         echo "Логи приложения (первые 20 строк):"
