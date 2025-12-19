@@ -61,8 +61,8 @@ build:
       fi
 
       docker buildx build \
-      --cache-from $CI_REGISTRY_IMAGE:cache \
-      --cache-to $CI_REGISTRY_IMAGE:cache \
+      --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
+      --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
       --build-arg BUILDKIT_INLINE_CACHE=1 \
       -t $CONTAINER_IMAGE \
       --tag $IMAGE_TAG \
