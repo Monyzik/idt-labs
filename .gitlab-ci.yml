@@ -18,18 +18,18 @@ cache:
   paths:
     - .cache/pip
     - venv/
+    - .docker-cache/
 
-
-before_script:
-  - docker info
 
 
 test:
   stage: test
   image: python:3.12-slim
   before_script:
+    - python -m venv venv
+    - source venv/bin/activate
     - pip install --upgrade pip
-    - pip install -r requirements.txt
+    - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
     - pip install pytest pytest-cov
   script:
     - echo "Запуск тестов..."
@@ -57,6 +57,9 @@ build:
       fi
 
       docker build \
+      --cache-from $CI_REGISTRY_IMAGE:cache \
+      --cache-to $CI_REGISTRY_IMAGE:cache \
+      --build-arg BUILDKIT_INLINE_CACHE=1 \
       -t $CONTAINER_IMAGE \
       --tag $IMAGE_TAG \
       --tag $IMAGE_TAG_LATEST \
@@ -82,15 +85,18 @@ build:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
 
-test-image:
-  stage: test
+test-build:
+  stage: build
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
   script:
-    - echo "Testing Docker image..."
+    - echo "Тестирование Docker образа..."
     - docker run --rm $CONTAINER_IMAGE python -c "print('Image is working')"
-    - echo "Image test passed"
+    - echo "Тест образа пройден"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      when: on_success
 
 
 deploy:
