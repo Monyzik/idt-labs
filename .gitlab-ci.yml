@@ -22,7 +22,8 @@ cache:
     - venv/
     - .docker-cache/
 
-
+before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
 
 test:
   stage: test
@@ -51,7 +52,6 @@ build:
     - apk add --no-cache git
   services:
     - docker:24.0.5-dind
-    - docker buildx create --name gitlab-builder --use
   script:
     - |
       echo "Сборка Docker образа..."
@@ -60,10 +60,12 @@ build:
       echo "Dockerfile не найден"
       exit 1
       fi
-
+      
+      docker pull $CI_REGISTRY_IMAGE:latest || true
+      
       docker buildx build \
-      --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
-      --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
+      --cache-from $CI_REGISTRY_IMAGE:cache \
+      --cache-to $CI_REGISTRY_IMAGE:cache \
       --build-arg BUILDKIT_INLINE_CACHE=1 \
       -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA \
       --tag $IMAGE_TAG \
@@ -112,7 +114,6 @@ deploy:
       echo "Коммит: $CI_COMMIT_SHA"
       echo ""
       echo "Публикация образа..."
-      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
       docker push $IMAGE_TAG
       docker push $IMAGE_TAG_LATEST
       echo "Образ опубликован $CONTAINER_IMAGE"
