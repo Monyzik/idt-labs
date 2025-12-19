@@ -1,7 +1,6 @@
 stages:
   - test
   - build
-  - verify
   - deploy
 
 variables:
@@ -16,10 +15,10 @@ cache:
     - venv/
 
 
-before_script:
-  - python -m venv venv
-  - source venv/bin/activate
-  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
+#before_script:
+#  - python -m venv venv
+#  - source venv/bin/activate
+#  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
 
 
 test:
@@ -74,6 +73,12 @@ build:
       docker push $IMAGE_TAG_LATEST
 
       echo "IMAGE_TAG=$IMAGE_TAG" > build.env
+
+  artifacts:
+    reports:
+      dotenv: build.env
+    paths:
+      - Dockerfile
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
@@ -82,8 +87,18 @@ build:
 deploy:
   stage: deploy
   script:
-    - echo "Deploying $IMAGE_TAG"
-    # Здесь ваша логика развертывания
+    - |
+      echo "Деплой приложения"
+      echo "==================="
+      echo "Образ: $IMAGE_TAG"
+      echo "Ветка: $CI_COMMIT_BRANCH"
+      echo "Коммит: $CI_COMMIT_SHA"
+      echo ""
+      echo "Для деплоя выполните команды:"
+      echo "  docker pull $IMAGE_TAG"
+      echo "  # Ваши команды развертывания"
+      echo ""
+      echo "✅ Приложение готово к развертыванию!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
