@@ -51,6 +51,7 @@ build:
     - apk add --no-cache git
   services:
     - docker:24.0.5-dind
+    - docker buildx create --name gitlab-builder --use
   script:
     - |
       echo "Сборка Docker образа..."
@@ -64,7 +65,7 @@ build:
       --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
       --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
       --build-arg BUILDKIT_INLINE_CACHE=1 \
-      -t $CONTAINER_IMAGE \
+      -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA \
       --tag $IMAGE_TAG \
       --tag $IMAGE_TAG_LATEST \
       --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
