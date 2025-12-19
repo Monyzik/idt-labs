@@ -103,7 +103,6 @@ verify:
         -e DATABASE_URL=sqlite:///:memory: \
         $IMAGE_TAG)
         
-       PORT=8000
 #      PORT=$(docker port $CONTAINER_ID 8000 | cut -d: -f2)
 #      echo "Контейнер запущен на порту: $PORT"
       
@@ -111,7 +110,7 @@ verify:
       sleep 30
 
       echo "Проверка health check..."
-      if curl -f http://localhost:$PORT/api/health/; then
+      if curl -f http://localhost:8000/api/health/; then
         echo "Health check пройден"
       else
         echo "Health check не пройден"
@@ -120,7 +119,7 @@ verify:
       fi
       
       echo "Проверка API..."
-      if curl -f http://localhost:$PORT/api/todos/; then
+      if curl -f http://localhost:8000/api/todos/; then
         echo "PI работает"
       else
         echo "API недоступен"
