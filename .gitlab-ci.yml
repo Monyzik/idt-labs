@@ -77,10 +77,6 @@ build:
 
       echo "IMAGE_TAG=$IMAGE_TAG" > build.env
 
-  artifacts:
-    reports:
-      dotenv: build.env
-
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
