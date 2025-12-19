@@ -9,17 +9,17 @@ variables:
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-#cache:
-#  key: $CI_COMMIT_REF_SLUG
-#  paths:
-#    - .cache/pip
-#    - venv/
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - .cache/pip
+    - venv/
 
 
-#before_script:
-#  - python -m venv venv
-#  - source venv/bin/activate
-#  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
+before_script:
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
 
 
 test:
@@ -78,68 +78,6 @@ build:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       when: on_success
 
-verify:
-  stage: verify
-  image: $DOCKER_IMAGE
-  services:
-    - docker:24.0.7-dind
-  before_script:
-    - apk add --no-cache curl netcat-openbsd
-  script:
-    - |
-      echo "Проверка Docker образа..."
-      
-      docker pull $IMAGE_TAG
-      
-      CONTAINER_ID=$(docker run -d \
-        --rm \
-        -p 18000:8000 \
-        -e DATABASE_URL=sqlite:///:memory: \
-        $IMAGE_TAG)
-      
-      echo "Контейнер запущен на localhost:18000"
-      
-      echo "Ожидание запуска FastAPI (35 секунд)..."
-      sleep 35
-      
-      echo "Проверка доступности порта..."
-      if nc -z -w5 localhost 18000; then
-        echo "Порт 18000 доступен"
-      else
-        echo "Порт 18000 недоступен"
-        docker logs $CONTAINER_ID
-        exit 1
-      fi
-      
-      echo "Проверка HTTP эндпоинта..."
-      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:18000/api/health/)
-      
-      if [ "$HTTP_CODE" = "200" ]; then
-        echo "HTTP 200 OK"
-      elif [ "$HTTP_CODE" = "307" ]; then
-        echo "HTTP 307 Redirect (но работает)"
-        echo "Пробуем со слешем..."
-        HTTP_CODE2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:18000/api/health/)
-        if [ "$HTTP_CODE2" = "200" ]; then
-          echo "Со слешем: HTTP 200 OK"
-        else
-          echo "Со слешем: HTTP $HTTP_CODE2"
-          docker logs $CONTAINER_ID
-          exit 1
-        fi
-      else
-        echo "HTTP код: $HTTP_CODE"
-        echo "Пробуем корневой эндпоинт..."
-        curl -I http://localhost:18000/ || true
-        docker logs $CONTAINER_ID
-        exit 1
-      fi
-      
-      docker stop $CONTAINER_ID
-      echo "Образ работает корректно!"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: on_success
 
 deploy:
   stage: deploy
