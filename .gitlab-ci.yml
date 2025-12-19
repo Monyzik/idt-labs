@@ -127,14 +127,13 @@ test-build:
       
       echo "Проверяем..."
       sleep 10
-      if curl -s http://localhost:1010/api/health/ > /dev/null 2>&1; then
+      if curl -s -f http://localhost:1010/api/health/ > /dev/null 2>&1; then
         echo "Приложение работает!"
         
         echo "Логи приложения (первые 20 строк):"
         docker logs test-app --tail 20
       else
         echo "Приложение не отвечает"
-        echo "$(curl -s http://localhost:1010/api/health/)"
         docker logs test-app
         exit 1
       fi
