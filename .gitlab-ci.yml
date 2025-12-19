@@ -50,8 +50,6 @@ build:
   image: docker:24.0.5
   before_script:
     - apk add --no-cache git
-    - docker buildx create --name gitlab-builder --use || true
-    - docker buildx inspect --bootstrap
   services:
     - docker:24.0.5-dind
   script:
@@ -63,9 +61,7 @@ build:
       exit 1
       fi
       
-      docker buildx build \
-      --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
-      --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
+      docker build \
       -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA \
       --tag $IMAGE_TAG \
       --tag $IMAGE_TAG_LATEST \
