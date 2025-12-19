@@ -99,8 +99,10 @@ test-build:
       docker pull $IMAGE_TAG
       
       echo "Запуск контейнера..."
-      CONTAINER_ID=$(docker run -d -p 8000:8000 $IMAGE_TAG)
+      CONTAINER_ID=$(docker run -d -p 8000 $IMAGE_TAG)
+      PORT=$(docker port $CONTAINER_ID 8000 | cut -d: -f2)
       echo "Контейнер ID: $CONTAINER_ID"
+      echo "Контейнер доступен на порту: $PORT"
       
       echo "Ждем 30 секунд для запуска..."
       sleep 30
@@ -114,12 +116,12 @@ test-build:
       fi
       
       echo "Проверяем доступность сервера..."
-      STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || echo "000")
+      STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/ || echo "000")
       
       if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "201" ]; then
         echo "Сервер отвечает (HTTP $STATUS_CODE)"
         echo "Содержимое ответа:"
-        curl -s http://localhost:8000/ | head -c 200
+        curl -s http://localhost:$PORT/ | head -c 200
         echo ""
       else
         echo "Сервер не отвечает (HTTP $STATUS_CODE)"
@@ -129,7 +131,7 @@ test-build:
       fi
       
       echo "Проверяем API..."
-      if curl -f -s http://localhost:8000/api/health > /dev/null 2>&1; then
+      if curl -f -s http://localhost:$PORT/api/health > /dev/null 2>&1; then
         echo "Health check пройден"
       else
         echo "Health check не найден или не отвечает"
