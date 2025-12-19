@@ -90,22 +90,29 @@ test-build:
     - docker:24.0.5-dind
   needs:
     - build
+  before_script:
+    - apk add --no-cache docker-cli docker-compose curl
   script:
     - |
       echo "Тестирование API"
-      
-      apk add --no-cache curl docker-cli
-      
+            
       docker pull $IMAGE_TAG
       
+      export POSTGRES_DB=todo_db
+      export POSTGRES_USER=user
+      export POSTGRES_PASSWORD=password
+      export PGADMIN_EMAIL=admin@admin.com
+      export PGADMIN_PASSWORD=password
+      
       echo "Запуск контейнера..."
-      CONTAINER_ID=$(docker run -d -p 1010:1010 $IMAGE_TAG)
+      docker-compose up -d --no-build web db
       PORT=1010
-      echo "Контейнер ID: $CONTAINER_ID"
-      echo "Контейнер доступен на порту: $PORT"
       
       echo "Ждем 30 секунд для запуска..."
       sleep 30
+      
+      echo "📊 Статус сервисов:"
+      docker-compose ps
       
       if docker ps | grep -q $CONTAINER_ID; then
         echo "Контейнер запущен"
