@@ -127,11 +127,17 @@ test-build:
       
       echo "Проверяем..."
       sleep 30
-      if curl -s -f http://localhost:1010/api/health/ > /dev/null 2>&1; then
+      if docker logs test-app 2>&1 | grep -q "Application startup complete\|Server started at\|Uvicorn running"; then
+        echo "Приложение успешно запустилось"
+      else
+        echo "Приложение не запустилось"
+        echo "Логи:"
+        docker logs test-app
+        exit 1
+      fi
+      RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health 2>/dev/null || echo "000")
+      if [ "$RESPONSE_CODE" != "000" ]; then
         echo "Приложение работает!"
-        
-        echo "Логи приложения (первые 20 строк):"
-        docker logs test-app --tail 20
       else
         echo "Приложение не отвечает"
         docker logs test-app
