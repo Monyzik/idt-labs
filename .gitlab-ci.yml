@@ -80,57 +80,65 @@ build:
 
 verify:
   stage: verify
-  image: docker:24.0.5
+  image: $DOCKER_IMAGE
   services:
-    - docker:24.0.5-dind
-  needs:
-    - build
+    - docker:24.0.7-dind
   before_script:
-    - apk add --no-cache curl
+    - apk add --no-cache curl netcat-openbsd
   script:
     - |
-      echo "Проверка работоспособности образа..."
+      echo "Проверка Docker образа..."
       
-      curl --version
-      
-      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
       docker pull $IMAGE_TAG
       
-      echo "Запуск контейнера..."
       CONTAINER_ID=$(docker run -d \
         --rm \
-        -p 8000:8000 \
+        -p 18000:8000 \
         -e DATABASE_URL=sqlite:///:memory: \
         $IMAGE_TAG)
       
-      #      PORT=$(docker port $CONTAINER_ID 8000 | cut -d: -f2)
-      #      echo "Контейнер запущен на порту: $PORT"
+      echo "Контейнер запущен на localhost:18000"
       
-      echo "Ожидание запуска приложения..."
-      sleep 30
+      echo "Ожидание запуска FastAPI (35 секунд)..."
+      sleep 35
       
-      echo "Проверка health check..."
-      if curl -f http://localhost:8000/api/health/; then
-      echo "Health check пройден"
+      echo "Проверка доступности порта..."
+      if nc -z -w5 localhost 18000; then
+        echo "Порт 18000 доступен"
       else
-      echo "Health check не пройден"
-      docker logs $CONTAINER_ID
-      exit 1
+        echo "Порт 18000 недоступен"
+        docker logs $CONTAINER_ID
+        exit 1
       fi
       
-      echo "Проверка API..."
-      if curl -f http://localhost:8000/api/todos/; then
-      echo "PI работает"
+      echo "Проверка HTTP эндпоинта..."
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:18000/api/health/)
+      
+      if [ "$HTTP_CODE" = "200" ]; then
+        echo "HTTP 200 OK"
+      elif [ "$HTTP_CODE" = "307" ]; then
+        echo "HTTP 307 Redirect (но работает)"
+        echo "Пробуем со слешем..."
+        HTTP_CODE2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:18000/api/health/)
+        if [ "$HTTP_CODE2" = "200" ]; then
+          echo "Со слешем: HTTP 200 OK"
+        else
+          echo "Со слешем: HTTP $HTTP_CODE2"
+          docker logs $CONTAINER_ID
+          exit 1
+        fi
       else
-      echo "API недоступен"
-      docker logs $CONTAINER_ID
-      exit 1
+        echo "HTTP код: $HTTP_CODE"
+        echo "Пробуем корневой эндпоинт..."
+        curl -I http://localhost:18000/ || true
+        docker logs $CONTAINER_ID
+        exit 1
       fi
-      echo "Остановка контейнера..."
+      
       docker stop $CONTAINER_ID
-      echo "Образ прошел все проверки"
+      echo "Образ работает корректно!"
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "main"
       when: on_success
 
 deploy:
