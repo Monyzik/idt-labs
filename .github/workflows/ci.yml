@@ -1,172 +1,236 @@
-stages:
-  - test
-  - build
-  - deploy
+name: CI
 
-variables:
-  DOCKER_BUILDKIT: 1
-  BUILDKIT_INLINE_CACHE: 1
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOCKER_BUILDKIT: "1"
+  BUILDKIT_INLINE_CACHE: "1"
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
-  CONTAINER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  IMAGE_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
 
-  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-  IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
 
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-cache:
-  key: $CI_COMMIT_REF_SLUG
-  paths:
-    - .cache/pip
-    - venv/
-    - .docker-cache/
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --cache-dir "$PIP_CACHE_DIR" -r requirements.txt
+          pip install pytest pytest-cov
 
-test:
-  stage: test
-  image: python:3.12-slim
-  before_script:
-    - python -m venv venv
-    - source venv/bin/activate
-    - pip install --upgrade pip
-    - pip install --cache-dir $PIP_CACHE_DIR -r requirements.txt
-    - pip install pytest pytest-cov
-  script:
-    - echo "Запуск тестов..."
-    - pytest --junitxml=report.xml --cov=. --cov-report=xml:coverage.xml --cov-fail-under=70
-  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
-  artifacts:
-    reports:
-      junit: report.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+      - name: Run tests
+        run: |
+          echo "Запуск тестов..."
+          pytest --junitxml=report.xml --cov=. --cov-report=xml:coverage.xml --cov-fail-under=70
 
-build:
-  stage: build
-  image: docker:24.0.5
-  before_script:
-    - apk add --no-cache git
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  services:
-    - docker:24.0.5-dind
-  script:
-    - |
-      echo "Сборка Docker образа..."
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            report.xml
+            coverage.xml
 
-      if [ ! -f "Dockerfile" ]; then
-      echo "Dockerfile не найден"
-      exit 1
-      fi
-      
-      docker build \
-      -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA \
-      --tag $IMAGE_TAG \
-      --tag $IMAGE_TAG_LATEST \
-      --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-      --build-arg VERSION=$CI_COMMIT_SHA \
-      --build-arg COMMIT=$CI_COMMIT_SHA .
-      
-      echo "Проверка созданного образа..."
-      if docker image inspect $IMAGE_TAG > /dev/null 2>&1; then
-        echo "Образ успешно создан: $IMAGE_TAG"
-      else
-        echo "Ошибка: образ не создан"
-        exit 1
-      fi
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
 
-      echo "IMAGE_TAG=$IMAGE_TAG" > build.env
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-      when: on_success
+      - name: Prepare image metadata
+        run: |
+          IMAGE_NAME_LC="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME_LC=$IMAGE_NAME_LC" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG_LATEST=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:latest" >> "$GITHUB_ENV"
 
-test-build:
-  stage: build
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  needs:
-    - build
-  before_script:
-    - apk add --no-cache docker-cli docker-compose curl
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker rm -f test-db test-app 2>/dev/null || true
-  script:
-    - |
-      echo "Тестирование API"
-      
-      export POSTGRES_DB=todo_db
-      export POSTGRES_USER=user
-      export POSTGRES_PASSWORD=password
-      export PGADMIN_EMAIL=admin@admin.com
-      export PGADMIN_PASSWORD=password
-      
-      echo "Запускаем PostgreSQL..."
-      docker run -d --name test-db \
-        -e POSTGRES_DB=test_db \
-        -e POSTGRES_USER=test_user \
-        -e POSTGRES_PASSWORD=test_password \
-        -p 5432:5432 \
-        postgres:15-alpine
-      
-      echo "Ждем 30 секунд для запуска..."
-      sleep 20
-      
-      echo "Запуск контейнера..."
-      docker run -d --name test-app \
-        --link test-db:db \
-        -e DATABASE_URL="postgresql://test_user:test_password@db:5432/test_db" \
-        -p 1010:1010 \
-        $IMAGE_TAG
-      PORT=1010
-      
-      echo "Ждем 30 секунд для запуска..."
-      sleep 30
-      
-      echo "Проверяем..."
-      sleep 30
-      if docker logs test-app 2>&1 | grep -q "Application startup complete\|Server started at\|Uvicorn running"; then
-        echo "Приложение успешно запустилось"
-      else
-        echo "Приложение не запустилось"
-        echo "Логи:"
-        docker logs test-app
-        exit 1
-      fi
-      RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health 2>/dev/null || echo "000")
-      if [ "$RESPONSE_CODE" != "000" ]; then
-        echo "Приложение работает!"
-      else
-        echo "Приложение не отвечает"
-        docker logs test-app
-        exit 1
-      fi
-      
-      docker stop test-app test-db
-      docker rm test-app test-db
-      echo "Тестирование завершено успешно!"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-      when: on_success
+      - name: Build Docker image
+        run: |
+          echo "Сборка Docker образа..."
 
+          if [ ! -f "Dockerfile" ]; then
+            echo "Dockerfile не найден"
+            exit 1
+          fi
 
-deploy:
-  stage: deploy
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - |
-      echo "Деплой приложения"
-      echo "Образ: $IMAGE_TAG"
-      echo "Ветка: $CI_COMMIT_BRANCH"
-      echo "Коммит: $CI_COMMIT_SHA"
-      echo ""
-      echo "Публикация образа..."
-      docker push $IMAGE_TAG
-      docker push $IMAGE_TAG_LATEST
-      echo "Образ опубликован $CONTAINER_IMAGE"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+          docker build \
+            -t "$IMAGE_TAG" \
+            -t "$IMAGE_TAG_LATEST" \
+            --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --build-arg VERSION="${GITHUB_SHA}" \
+            --build-arg COMMIT="${GITHUB_SHA}" \
+            .
+
+          echo "Проверка созданного образа..."
+          if docker image inspect "$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "Образ успешно создан: $IMAGE_TAG"
+          else
+            echo "Ошибка: образ не создан"
+            exit 1
+          fi
+
+          docker save "$IMAGE_TAG" "$IMAGE_TAG_LATEST" -o image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+          if-no-files-found: error
+
+  test-build:
+    name: test-build
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Prepare image metadata
+        run: |
+          IMAGE_NAME_LC="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME_LC=$IMAGE_NAME_LC" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG_LATEST=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:latest" >> "$GITHUB_ENV"
+
+      - name: Load image
+        run: docker load -i /tmp/image.tar
+
+      - name: Run integration check
+        run: |
+          echo "Тестирование API"
+
+          docker network create ci-network 2>/dev/null || true
+          docker rm -f test-db test-app 2>/dev/null || true
+
+          echo "Запускаем PostgreSQL..."
+          docker run -d --name test-db --network ci-network \
+            -e POSTGRES_DB=test_db \
+            -e POSTGRES_USER=test_user \
+            -e POSTGRES_PASSWORD=test_password \
+            postgres:15-alpine
+
+          echo "Ждем запуска PostgreSQL..."
+          for i in $(seq 1 30); do
+            if docker exec test-db pg_isready -U test_user -d test_db > /dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Запуск контейнера..."
+          docker run -d --name test-app --network ci-network \
+            -e DATABASE_URL="postgresql://test_user:test_password@test-db:5432/test_db" \
+            -p 1010:1010 \
+            "$IMAGE_TAG"
+
+          echo "Ждем запуска приложения..."
+          for i in $(seq 1 30); do
+            RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health 2>/dev/null || echo "000")
+            if [ "$RESPONSE_CODE" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health 2>/dev/null || echo "000")
+          if [ "$RESPONSE_CODE" != "200" ]; then
+            echo "Приложение не отвечает"
+            docker logs test-app
+            exit 1
+          fi
+
+          if docker logs test-app 2>&1 | grep -q "Application startup complete\|Server started at\|Uvicorn running"; then
+            echo "Приложение успешно запустилось"
+          else
+            echo "Приложение не запустилось"
+            docker logs test-app
+            exit 1
+          fi
+
+          docker stop test-app test-db
+          docker rm test-app test-db
+          docker network rm ci-network 2>/dev/null || true
+
+          echo "Тестирование завершено успешно!"
+
+      - name: Cleanup containers
+        if: always()
+        run: |
+          docker rm -f test-app test-db 2>/dev/null || true
+          docker network rm ci-network 2>/dev/null || true
+
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    needs: test-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Prepare image metadata
+        run: |
+          IMAGE_NAME_LC="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME_LC=$IMAGE_NAME_LC" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG_LATEST=${IMAGE_REGISTRY}/${IMAGE_NAME_LC}:latest" >> "$GITHUB_ENV"
+
+      - name: Load image
+        run: docker load -i /tmp/image.tar
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push image
+        run: |
+          echo "Деплой приложения"
+          echo "Образ: $IMAGE_TAG"
+          echo "Ветка: $GITHUB_REF_NAME"
+          echo "Коммит: $GITHUB_SHA"
+          echo ""
+          echo "Публикация образа..."
+          docker push "$IMAGE_TAG"
+          docker push "$IMAGE_TAG_LATEST"
+          echo "Образ опубликован $IMAGE_TAG"
