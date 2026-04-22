@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=builder /app/packages /usr/local/lib/python3.11/site-packages
 ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
 
-COPY infra/docker .
+COPY . .
 
 EXPOSE 8080
 

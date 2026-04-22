@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 
-COPY infra/docker .
+COPY . .
 EXPOSE 8080
 CMD ["fastapi", "run", "src/main.py", "--port", "8080", "--reload"]
 
