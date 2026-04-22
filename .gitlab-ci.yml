@@ -118,9 +118,9 @@ test-build:
       docker run -d --name test-app \
         --link test-db:db \
         -e DATABASE_URL="postgresql://test_user:test_password@db:5432/test_db" \
-        -p 1010:1010 \
+        -p 8080:8080 \
         $IMAGE_TAG
-      PORT=1010
+      PORT=8080
       
       echo "Ждем 30 секунд для запуска..."
       sleep 30
@@ -135,7 +135,7 @@ test-build:
         docker logs test-app
         exit 1
       fi
-      RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health 2>/dev/null || echo "000")
+      RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health/ 2>/dev/null || echo "000")
       if [ "$RESPONSE_CODE" != "000" ]; then
         echo "Приложение работает!"
       else

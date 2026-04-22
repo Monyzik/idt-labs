@@ -158,19 +158,19 @@ jobs:
           echo "Запуск контейнера..."
           docker run -d --name test-app --network ci-network \
             -e DATABASE_URL="postgresql://test_user:test_password@test-db:5432/test_db" \
-            -p 1010:1010 \
+            -p 8080:8080 \
             "$IMAGE_TAG"
 
           echo "Ждем запуска приложения..."
           for i in $(seq 1 30); do
-            RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health/ 2>/dev/null || echo "000")
+            RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health/ 2>/dev/null || echo "000")
             if [ "$RESPONSE_CODE" = "200" ]; then
               break
             fi
             sleep 2
           done
 
-          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:1010/api/health/ 2>/dev/null || echo "000")
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health/ 2>/dev/null || echo "000")
           if [ "$RESPONSE_CODE" != "200" ]; then
             echo "Приложение не отвечает"
             docker logs test-app
