@@ -12,10 +12,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 
-COPY . .
-EXPOSE 1010
-CMD ["fastapi", "run", "src/main.py", "--port", "1010", "--reload"]
+COPY infra/docker .
+EXPOSE 8080
+CMD ["fastapi", "run", "src/main.py", "--port", "8080", "--reload"]
 
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["curl", "-f", "0.0.0.0:1010/api/health"]
+    CMD ["curl", "-f", "http://localhost:8080/api/health/"]

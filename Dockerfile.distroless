@@ -12,8 +12,8 @@ WORKDIR /app
 COPY --from=builder /app/packages /usr/local/lib/python3.11/site-packages
 ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
 
-COPY . .
+COPY infra/docker .
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["src/main.py"]
