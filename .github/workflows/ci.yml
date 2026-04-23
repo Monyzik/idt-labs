@@ -197,11 +197,11 @@ jobs:
           docker rm -f test-app test-db 2>/dev/null || true
           docker network rm ci-network 2>/dev/null || true
 
-  deploy:
-    name: deploy
+  k8s-smoke:
+    name: k8s-smoke
     runs-on: ubuntu-latest
     needs: test-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     env:
       K8S_NAMESPACE: default
       K8S_KUSTOMIZE_PATH: k8s/overlays/dev
@@ -226,41 +226,24 @@ jobs:
       - name: Load image
         run: docker load -i /tmp/image.tar
 
-      - name: Login to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Push image
-        run: |
-          echo "Деплой приложения"
-          echo "Образ: $IMAGE_TAG"
-          echo "Ветка: $GITHUB_REF_NAME"
-          echo "Коммит: $GITHUB_SHA"
-          echo ""
-          echo "Публикация образа..."
-          docker push "$IMAGE_TAG"
-          docker push "$IMAGE_TAG_LATEST"
-          echo "Образ опубликован $IMAGE_TAG"
+      - name: Set up kind cluster
+        uses: helm/kind-action@v1.12.0
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: v1.31.0
 
-      - name: Configure kubeconfig
-        env:
-          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+      - name: Load app image into kind
         run: |
-          if [ -z "$KUBE_CONFIG_B64" ]; then
-            echo "Secret KUBE_CONFIG_B64 is not set"
-            exit 1
-          fi
+          kind load docker-image "$IMAGE_TAG"
 
-          mkdir -p "$HOME/.kube"
-          echo "$KUBE_CONFIG_B64" | base64 --decode > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
-          kubectl cluster-info
+      - name: Install ingress-nginx
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+          kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=240s
 
-      - name: Deploy manifests to Kubernetes
+      - name: Apply Kubernetes manifests
         run: |
           kubectl apply -k "$K8S_KUSTOMIZE_PATH" -n "$K8S_NAMESPACE"
 
@@ -271,5 +254,32 @@ jobs:
 
       - name: Verify rollout
         run: |
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/db-deployment --timeout=180s
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/todo-deployment --timeout=180s
+
+      - name: Verify health via ingress
+        run: |
+          kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8081:80 > /tmp/ingress-pf.log 2>&1 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 60); do
+            RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: todo.local" http://127.0.0.1:8081/api/health/ 2>/dev/null || echo "000")
+            if [ "$RESPONSE_CODE" = "200" ]; then
+              echo "Ingress health check passed"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Ingress health check failed"
+          cat /tmp/ingress-pf.log || true
+          exit 1
+
+      - name: Debug cluster state on failure
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl get svc -A
+          kubectl get ingress -A
 
