@@ -202,8 +202,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      K8S_NAMESPACE: default
+      K8S_KUSTOMIZE_PATH: k8s/overlays/dev
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download image artifact
         uses: actions/download-artifact@v4
         with:
@@ -234,3 +240,36 @@ jobs:
           docker push "$IMAGE_TAG"
           docker push "$IMAGE_TAG_LATEST"
           echo "Образ опубликован $IMAGE_TAG"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+        run: |
+          if [ -z "$KUBE_CONFIG_B64" ]; then
+            echo "Secret KUBE_CONFIG_B64 is not set"
+            exit 1
+          fi
+
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG_B64" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          kubectl cluster-info
+
+      - name: Deploy manifests to Kubernetes
+        run: |
+          kubectl apply -k "$K8S_KUSTOMIZE_PATH" -n "$K8S_NAMESPACE"
+
+      - name: Update image in deployment
+        run: |
+          kubectl -n "$K8S_NAMESPACE" set image deployment/todo-deployment \
+            todo-deployment="$IMAGE_TAG"
+
+      - name: Verify rollout
+        run: |
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/todo-deployment --timeout=180s
+
