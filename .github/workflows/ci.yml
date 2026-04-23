@@ -205,6 +205,7 @@ jobs:
     env:
       K8S_NAMESPACE: default
       K8S_KUSTOMIZE_PATH: k8s/overlays/dev
+      KIND_CLUSTER_NAME: kind
 
     steps:
       - name: Checkout repository
@@ -228,6 +229,8 @@ jobs:
 
       - name: Set up kind cluster
         uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER_NAME }}
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
@@ -236,7 +239,7 @@ jobs:
 
       - name: Load app image into kind
         run: |
-          kind load docker-image "$IMAGE_TAG"
+          kind load docker-image "$IMAGE_TAG" --name "$KIND_CLUSTER_NAME"
 
       - name: Install ingress-nginx
         run: |
