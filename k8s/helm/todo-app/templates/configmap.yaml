@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "todo-app.configMapName" . }}
+  labels:
+    {{ include "todo-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  SERVER_PORT: {{ .Values.config.serverPort | quote }}
+  SERVER_HOST: {{ .Values.config.serverHost | quote }}
+  POSTGRES_DB: {{ .Values.config.postgresDb | quote }}

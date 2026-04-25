@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-app.todoDeploymentName" . }}
+  labels:
+    {{ include "todo-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: application
+    app: {{ include "todo-app.todoDeploymentName" . }}
+spec:
+  replicas: {{ .Values.todo.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "todo-app.todoDeploymentName" . }}
+  template:
+    metadata:
+      labels:
+        {{ include "todo-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: application
+        app: {{ include "todo-app.todoDeploymentName" . }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "todo-app.todoDeploymentName" . }}
+          image: "{{ .Values.todo.image.repository }}:{{ .Values.todo.image.tag }}"
+          imagePullPolicy: {{ .Values.todo.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.todo.containerPort }}
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              value: {{ include "todo-app.todoDatabaseUrl" . | quote }}
+          {{- with .Values.todo.resources }}
+          resources:
+            {{ toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}

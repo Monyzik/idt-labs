@@ -1,0 +1,65 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+config:
+  name: todo-app-config
+  serverPort: "8080"
+  serverHost: "0.0.0.0"
+  postgresDb: todo_db
+
+database:
+  deploymentName: todo-app-db
+  serviceName: todo-app-db
+  secretName: todo-app-db-secret
+  port: 5432
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  auth:
+    createSecret: true
+    existingSecret: ""
+    username: user
+    password: password
+  persistence:
+    enabled: true
+    pvcName: todo-app-db-pvc
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClassName: ""
+    mountPath: /var/lib/postgresql/data
+  resources: {}
+
+todo:
+  deploymentName: todo-app
+  serviceName: todo-app-service
+  replicaCount: 3
+  containerPort: 8080
+  image:
+    repository: ghcr.io/monyzik/idt-labs
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  databaseUrl: ""
+  resources: {}
+
+ingress:
+  enabled: true
+  name: todo-app-ingress
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: todo.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
