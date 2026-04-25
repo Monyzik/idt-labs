@@ -235,7 +235,7 @@ jobs:
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     env:
       K8S_NAMESPACE: default
-      K8S_KUSTOMIZE_PATH: k8s/overlays/dev
+      K8S_KUSTOMIZE_PATH: k8s/kustomization/overlays/dev
       KIND_CLUSTER_NAME: kind
 
     steps:
