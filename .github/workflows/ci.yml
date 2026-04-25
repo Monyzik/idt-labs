@@ -277,6 +277,25 @@ jobs:
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
           kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=240s
 
+      - name: Generate secret from GitHub Secrets
+        env:
+          DB_USER: ${{ secrets.POSTGRES_USER || 'user' }}
+          DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'password' }}
+        run: |
+          mkdir -p "$K8S_KUSTOMIZE_PATH"
+          cat > "$K8S_KUSTOMIZE_PATH/secret.yaml" <<EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: db-secret
+          type: Opaque
+          stringData:
+            POSTGRES_USER: $DB_USER
+            POSTGRES_PASSWORD: $DB_PASSWORD
+          EOF
+          cat "$K8S_KUSTOMIZE_PATH/secret.yaml"
+          cat "$K8S_KUSTOMIZE_PATH/secret.yaml"
+
       - name: Apply Kubernetes manifests
         run: |
           kubectl apply -k "$K8S_KUSTOMIZE_PATH" -n "$K8S_NAMESPACE"
