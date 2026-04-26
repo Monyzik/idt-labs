@@ -302,13 +302,11 @@ jobs:
 
       - name: Update image in deployment
         run: |
-          kubectl -n "$K8S_NAMESPACE" set image deployment/todo-deployment \
-            todo-deployment="$IMAGE_TAG"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/todo-app todo-app="$IMAGE_TAG"
 
       - name: Verify rollout
         run: |
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/db-deployment --timeout=180s
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/todo-deployment --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/todo-app --timeout=180s
 
       - name: Verify health via ingress
         run: |
