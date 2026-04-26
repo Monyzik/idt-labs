@@ -1,0 +1,29 @@
+groups:
+  - name: todo-api-alerts
+    rules:
+      - alert: TodoApiTargetDown
+        expr: up{job="telegram-support-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Todo API target is down"
+          description: "Prometheus cannot scrape the todo API /metrics endpoint for 2 minutes."
+
+      - alert: TodoApiHighErrorRate
+        expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Todo API high 5xx rate"
+          description: "More than 5% of requests are failing with 5xx over the last 5 minutes."
+
+      - alert: TodoApiHighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path, method)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Todo API high latency p95"
+          description: "95th percentile latency is above 1 second for 5 minutes."

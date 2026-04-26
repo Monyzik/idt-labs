@@ -1,11 +1,11 @@
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from src.database.models import Todo
+from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from src.database.models import Todo
 
 
 class TodoBase(BaseModel):
@@ -45,14 +45,14 @@ class TodoCRUD:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[Todo]:
+    def get_all(self, skip: int = 0, limit: int = 100) -> list[type[Todo]]:
         return self.db.query(Todo) \
             .order_by(desc(Todo.created_at)) \
             .offset(skip) \
             .limit(limit) \
             .all()
 
-    def get_by_id(self, todo_id: int) -> Optional[Todo]:
+    def get_by_id(self, todo_id: int) -> type[Todo] | None:
         return self.db.query(Todo).filter(Todo.id == todo_id).first()
 
     def create(self, todo_in: TodoCreate) -> Todo:

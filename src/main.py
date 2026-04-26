@@ -1,18 +1,37 @@
 from contextlib import asynccontextmanager
+import os
 
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api import health, todo
-from src.config import STATIC_DIR
+from src.config import (
+    APP_ENVIRONMENT,
+    APP_NAME,
+    APP_VERSION,
+    LOG_LEVEL,
+    OTEL_EXPORTER_OTLP_ENDPOINT,
+    SENTRY_DSN,
+    SENTRY_TRACES_SAMPLE_RATE,
+    STATIC_DIR,
+)
 from src.database.database_manager import engine
 from src.database.models import Base
-import os
+from src.observability import (
+    ObservabilityMiddleware,
+    configure_logging,
+    configure_sentry,
+    configure_tracing,
+    get_logger,
+    metrics_router,
+    setup_database_metrics,
+)
 
 api_router = APIRouter()
+logger = get_logger(__name__)
 
 api_router.include_router(todo.router, prefix="/todos", tags=["todos"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
@@ -20,18 +39,27 @@ api_router.include_router(health.router, prefix="/health", tags=["health"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Запуск приложения...")
+    logger.info("Application startup initiated")
     try:
-        # Создаем таблицы при запуске приложения
         Base.metadata.create_all(bind=engine)
-        print("Таблицы базы данных созданы/проверены")
+        logger.info("Database schema verified")
     except Exception as e:
-        print(f"Ошибка при создании таблиц: {e}")
+        logger.exception("Database schema verification failed")
     yield
-    print("Остановка приложения...")
+    logger.info("Application shutdown completed")
 
 
-app = FastAPI(lifespan=lifespan)  # Используем lifespan manager
+configure_logging(LOG_LEVEL)
+configure_sentry(
+    dsn=SENTRY_DSN,
+    environment=APP_ENVIRONMENT,
+    release=APP_VERSION,
+    traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+)
+setup_database_metrics(engine)
+
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan)
+app.add_middleware(ObservabilityMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +70,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+app.include_router(metrics_router)
+configure_tracing(APP_NAME, OTEL_EXPORTER_OTLP_ENDPOINT, app=app, engine=engine)
 
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
