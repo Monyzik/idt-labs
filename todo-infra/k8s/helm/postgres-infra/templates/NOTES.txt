@@ -1,0 +1,8 @@
+1. PostgreSQL service:
+   {{ include "todo-infra.dbServiceName" . }}:{{ .Values.database.port }}
+
+2. Secret name with PostgreSQL credentials:
+   {{ include "todo-infra.dbSecretName" . }}
+
+3. Example application connection string format:
+   postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres-0.{{ include "todo-infra.dbServiceName" . }}:{{ .Values.database.port }}/{{ .Values.database.name }}

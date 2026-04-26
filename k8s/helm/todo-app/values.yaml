@@ -11,31 +11,9 @@ config:
   name: todo-app-config
   serverPort: "8080"
   serverHost: "0.0.0.0"
-  postgresDb: todo_db
 
 database:
-  deploymentName: todo-app-db
-  serviceName: todo-app-db
-  secretName: todo-app-db-secret
-  port: 5432
-  image:
-    repository: postgres
-    tag: "15"
-    pullPolicy: IfNotPresent
-  auth:
-    createSecret: true
-    existingSecret: ""
-    username: user
-    password: password
-  persistence:
-    enabled: true
-    pvcName: todo-app-db-pvc
-    accessModes:
-      - ReadWriteOnce
-    size: 1Gi
-    storageClassName: ""
-    mountPath: /var/lib/postgresql/data
-  resources: {}
+  secretName: todo-app-secret
 
 todo:
   deploymentName: todo-app

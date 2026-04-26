@@ -57,24 +57,8 @@ Shared resource names
 {{- .Values.config.name | default "todo-app-config" -}}
 {{- end -}}
 
-{{- define "todo-app.dbDeploymentName" -}}
-{{- .Values.database.deploymentName | default "todo-app-db" -}}
-{{- end -}}
-
-{{- define "todo-app.dbServiceName" -}}
-{{- .Values.database.serviceName | default "todo-app-db" -}}
-{{- end -}}
-
-{{- define "todo-app.dbSecretName" -}}
-{{- if .Values.database.auth.existingSecret -}}
-{{- .Values.database.auth.existingSecret -}}
-{{- else -}}
-{{- .Values.database.secretName | default "todo-app-db-secret" -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "todo-app.dbPvcName" -}}
-{{- .Values.database.persistence.pvcName | default "todo-app-db-pvc" -}}
+{{- define "todo-app.secretName" -}}
+{{- .Values.database.secretName | default "todo-app-secret" -}}
 {{- end -}}
 
 {{- define "todo-app.todoDeploymentName" -}}
@@ -87,12 +71,4 @@ Shared resource names
 
 {{- define "todo-app.ingressName" -}}
 {{- .Values.ingress.name | default "todo-app-ingress" -}}
-{{- end -}}
-
-{{- define "todo-app.todoDatabaseUrl" -}}
-{{- if .Values.todo.databaseUrl -}}
-{{- .Values.todo.databaseUrl -}}
-{{- else -}}
-{{- printf "postgresql://%s:%s@%s:%v/%s" .Values.database.auth.username .Values.database.auth.password (include "todo-app.dbServiceName" .) .Values.database.port .Values.config.postgresDb -}}
-{{- end -}}
 {{- end -}}

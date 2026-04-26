@@ -238,6 +238,12 @@ Temporary Items
 
 # Installer logs
 
+# Local Kubernetes secrets
+k8s/helm/todo-app/secret-dev.yaml
+k8s/helm/todo-app/secret-prod.yaml
+todo-infra/k8s/helm/postgres-infra/secret-dev.yaml
+todo-infra/k8s/helm/postgres-infra/secret-prod.yaml
+
 # Unit tests / coverage reports
 
 # Translations
@@ -315,7 +321,8 @@ env.bak/
 venv.bak/
 
 # Kubernetes secrets with real credentials
-k8s/kustomization/overlays/*/secret.yaml
+**/secret.yaml
+**/secret-de
 
 # Spyder project settings
 .spyderproject
@@ -399,4 +406,3 @@ cython_debug/
 
 /data
 k8s/kustomization/overlays/*/secret.yaml
-

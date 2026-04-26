@@ -1,22 +1,22 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: db-deployment
+  name: postgres
   labels:
-    app: db-deployment
+    app: postgres
 spec:
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
-      app: db-deployment
+      app: postgres
   template:
     metadata:
-      name: db-deployment
       labels:
-        app: db-deployment
+        app: postgres
     spec:
       containers:
-        - name: db-deployment
+        - name: postgres
           image: postgres:15
           imagePullPolicy: IfNotPresent
           ports:
@@ -24,21 +24,26 @@ spec:
               protocol: TCP
           env:
             - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: todo-app-config
-                  key: POSTGRES_DB
+              value: todo_db
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: db-secret
+                  name: postgres-secret
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: db-secret
+                  name: postgres-secret
                   key: POSTGRES_PASSWORD
-
-
-      restartPolicy: Always
-      
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

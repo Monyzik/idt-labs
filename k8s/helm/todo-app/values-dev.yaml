@@ -1,0 +1,9 @@
+todo:
+  replicaCount: 1
+
+ingress:
+  hosts:
+    - host: todo.local
+      paths:
+        - path: /
+          pathType: Prefix

@@ -8,4 +8,3 @@ metadata:
 data:
   SERVER_PORT: {{ .Values.config.serverPort | quote }}
   SERVER_HOST: {{ .Values.config.serverHost | quote }}
-  POSTGRES_DB: {{ .Values.config.postgresDb | quote }}

@@ -1,22 +1,23 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: {{ include "todo-app.dbDeploymentName" . }}
+  name: {{ include "todo-infra.dbDeploymentName" . }}
   labels:
-    {{ include "todo-app.labels" . | nindent 4 }}
+    {{ include "todo-infra.labels" . | nindent 4 }}
     app.kubernetes.io/component: database
-    app: {{ include "todo-app.dbDeploymentName" . }}
+    app: postgres
 spec:
+  serviceName: {{ include "todo-infra.dbServiceName" . }}
   replicas: 1
   selector:
     matchLabels:
-      app: {{ include "todo-app.dbDeploymentName" . }}
+      app: postgres
   template:
     metadata:
       labels:
-        {{ include "todo-app.labels" . | nindent 8 }}
+        {{ include "todo-infra.labels" . | nindent 8 }}
         app.kubernetes.io/component: database
-        app: {{ include "todo-app.dbDeploymentName" . }}
+        app: postgres
       {{- with .Values.podAnnotations }}
       annotations:
         {{ toYaml . | nindent 8 }}
@@ -27,7 +28,7 @@ spec:
         {{ toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ include "todo-app.dbDeploymentName" . }}
+        - name: postgres
           image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
           imagePullPolicy: {{ .Values.database.image.pullPolicy }}
           ports:
@@ -35,44 +36,37 @@ spec:
               protocol: TCP
           env:
             - name: POSTGRES_DB
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "todo-app.configMapName" . }}
-                  key: POSTGRES_DB
+              value: {{ .Values.database.name | quote }}
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "todo-app.dbSecretName" . }}
+                  name: {{ include "todo-infra.dbSecretName" . }}
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "todo-app.dbSecretName" . }}
+                  name: {{ include "todo-infra.dbSecretName" . }}
                   key: POSTGRES_PASSWORD
           {{- with .Values.database.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.database.persistence.enabled }}
           volumeMounts:
             - name: postgres-data
               mountPath: {{ .Values.database.persistence.mountPath }}
-          {{- end }}
-      {{- if .Values.database.persistence.enabled }}
-      volumes:
-        - name: postgres-data
-          persistentVolumeClaim:
-            claimName: {{ include "todo-app.dbPvcName" . }}
-      {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{ toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{ toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{ toYaml . | nindent 8 }}
-      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+        labels:
+          {{ include "todo-infra.labels" . | nindent 10 }}
+          app.kubernetes.io/component: database
+          app: postgres
+      spec:
+        accessModes:
+          {{ toYaml .Values.database.persistence.accessModes | nindent 10 }}
+        resources:
+          requests:
+            storage: {{ .Values.database.persistence.size | quote }}
+        {{- with .Values.database.persistence.storageClassName }}
+        storageClassName: {{ . | quote }}
+        {{- end }}

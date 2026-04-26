@@ -1,0 +1,4 @@
+database:
+  name: todo_db
+  persistence:
+    size: 1Gi

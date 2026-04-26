@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgres-infra
+description: Helm chart for PostgreSQL infrastructure used by the todo application
+type: application
+version: 0.1.0
+appVersion: "15"

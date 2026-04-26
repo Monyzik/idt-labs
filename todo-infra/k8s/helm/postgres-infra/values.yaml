@@ -1,0 +1,28 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: [ ]
+podAnnotations: { }
+nodeSelector: { }
+tolerations: [ ]
+affinity: { }
+
+database:
+  deploymentName: postgres
+  serviceName: postgres
+  secretName: postgres-secret
+  port: 5432
+  name: todo_db
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    pvcName: postgres-pvc
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClassName: ""
+    mountPath: /var/lib/postgresql/data
+  resources: { }

@@ -5,4 +5,3 @@ metadata:
 data:
   SERVER_PORT: "8080"
   SERVER_HOST: "0.0.0.0"
-  POSTGRES_DB: "todo_db"

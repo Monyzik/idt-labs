@@ -34,8 +34,21 @@ spec:
             - containerPort: {{ .Values.todo.containerPort }}
               protocol: TCP
           env:
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "todo-app.configMapName" . }}
+                  key: SERVER_PORT
+            - name: SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "todo-app.configMapName" . }}
+                  key: SERVER_HOST
             - name: DATABASE_URL
-              value: {{ include "todo-app.todoDatabaseUrl" . | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "todo-app.secretName" . }}
+                  key: DATABASE_URL
           {{- with .Values.todo.resources }}
           resources:
             {{ toYaml . | nindent 12 }}

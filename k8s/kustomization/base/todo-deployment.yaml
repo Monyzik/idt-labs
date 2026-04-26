@@ -1,28 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: todo-deployment
+  name: todo-app
   labels:
-    app: todo-deployment
+    app: todo-app
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: todo-deployment
+      app: todo-app
   template:
     metadata:
-      name: todo-deployment
       labels:
-        app: todo-deployment
+        app: todo-app
     spec:
       containers:
-        - name: todo-deployment
+        - name: todo-app
           image: ghcr.io/monyzik/idt-labs:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               protocol: TCP
           env:
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-app-config
+                  key: SERVER_PORT
+            - name: SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-app-config
+                  key: SERVER_HOST
             - name: DATABASE_URL
-              value: "postgresql://user:password@db-service:5432/todo_db"
+              valueFrom:
+                secretKeyRef:
+                  name: todo-app-secret
+                  key: DATABASE_URL
       restartPolicy: Always
