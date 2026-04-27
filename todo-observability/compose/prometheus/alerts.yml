@@ -2,7 +2,7 @@ groups:
   - name: todo-api-alerts
     rules:
       - alert: TodoApiTargetDown
-        expr: up{job="telegram-support-backend"} == 0
+        expr: up{job="todo-app"} == 0
         for: 2m
         labels:
           severity: critical

@@ -9,8 +9,10 @@ affinity: {}
 
 config:
   name: todo-app-config
+  appName: "todo-app"
   serverPort: "8080"
   serverHost: "0.0.0.0"
+  otelExporterOtlpEndpoint: ""
 
 database:
   secretName: todo-app-secret

@@ -11,6 +11,7 @@ services:
     image: prom/prometheus:v2.53.3
     container_name: tso-prometheus
     extra_hosts:
+      - "todo.local:host-gateway"
       - "host.docker.internal:host-gateway"
     volumes:
       - ./compose/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro

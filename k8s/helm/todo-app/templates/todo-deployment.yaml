@@ -34,6 +34,11 @@ spec:
             - containerPort: {{ .Values.todo.containerPort }}
               protocol: TCP
           env:
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "todo-app.configMapName" . }}
+                  key: APP_NAME
             - name: SERVER_PORT
               valueFrom:
                 configMapKeyRef:
@@ -49,6 +54,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "todo-app.secretName" . }}
                   key: DATABASE_URL
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "todo-app.configMapName" . }}
+                  key: OTEL_EXPORTER_OTLP_ENDPOINT
           {{- with .Values.todo.resources }}
           resources:
             {{ toYaml . | nindent 12 }}

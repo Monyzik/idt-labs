@@ -1,3 +1,6 @@
+config:
+  otelExporterOtlpEndpoint: "http://host.docker.internal:14318/v1/traces"
+
 todo:
   replicaCount: 1
 

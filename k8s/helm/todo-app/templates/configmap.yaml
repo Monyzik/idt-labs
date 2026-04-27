@@ -6,5 +6,7 @@ metadata:
     {{- include "todo-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: config
 data:
+  APP_NAME: {{ .Values.config.appName | quote }}
   SERVER_PORT: {{ .Values.config.serverPort | quote }}
   SERVER_HOST: {{ .Values.config.serverHost | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.config.otelExporterOtlpEndpoint | quote }}
